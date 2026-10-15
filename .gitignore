@@ -1,4 +1,4 @@
-﻿# ==========================================
+# ==========================================
 # CANOPUS + SARIntelligence Git Ignore Rules
 # ==========================================
 
@@ -63,6 +63,9 @@ models/**/*.bin
 models/**/*.safetensors
 models/**/*.onnx
 models/change_head/
+models/sar_retrieval/
+data/sar_master_templates.db
+
 
 # SAR model weights
 SARIntelligence/weights/**/*.pt
