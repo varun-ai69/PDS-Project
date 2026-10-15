@@ -93,14 +93,23 @@ services:
       - OFFLINE_MODE=${OFFLINE_MODE:-false}
       - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-0}
       - TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE:-0}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyCMoJ7d3VETSegomGOoukHiiLHtmHK6VOM}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-AIzaSyCMoJ7d3VETSegomGOoukHiiLHtmHK6VOM}
     ports:
       - "${PORT:-8000}:8000"
     volumes:
+      - ../.env:/app/.env:ro
       - ../data:/app/data
       - ../models:/app/models
       - ../frontend:/app/frontend
       - ../backend:/app/backend
       - ../scripts:/app/scripts
+      - ../sar-detections:/app/sar-detections
+      - ../sar-processed:/app/sar-processed
+      - ../preprocessed:/app/preprocessed
+      - ../sar-inputs:/app/sar-inputs
+      - ../SARIntelligence:/app/SARIntelligence
+      - ../infra:/app/infra
 
 volumes:
   postgres_data:

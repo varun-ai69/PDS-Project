@@ -5,6 +5,11 @@ echo "=========================================================="
 echo "      Starting CANOPUS Defense & EO Intelligence Stack    "
 echo "=========================================================="
 
+# Ensure runtime packages like einops and google-generativeai are available
+python -c "import einops" 2>/dev/null || pip install einops || true
+python -c "import google.generativeai" 2>/dev/null || pip install google-generativeai || true
+
+
 echo "Waiting for PostgreSQL at ${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}..."
 while ! python -c "import psycopg2, os; psycopg2.connect(host=os.getenv('POSTGRES_HOST', 'postgres'), port=int(os.getenv('POSTGRES_PORT', '5432')), dbname=os.getenv('POSTGRES_DB', 'eo_archive'), user=os.getenv('POSTGRES_USER', 'eo_admin'), password=os.getenv('POSTGRES_PASSWORD', 'eo_password'))" 2>/dev/null; do
   sleep 1

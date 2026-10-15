@@ -17,7 +17,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eo_admin} -d ${POSTGRES_DB:-eo_archive}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eo_admin} -d ${POSTGRES_DB:-eo_archive}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,14 +28,14 @@ services:
     container_name: eo_qdrant
     restart: unless-stopped
     expose:
-      - "6333"   # REST API
-      - "6334"   # gRPC API
+      - "6333" # REST API
+      - "6334" # gRPC API
     ports:
       - "${QDRANT_PORT:-6333}:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333'"]
+      test: [ "CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333'" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -50,8 +50,8 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-eo_password}
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web Console
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web Console
     volumes:
       - minio_data:/data
 
@@ -63,13 +63,22 @@ services:
       dockerfile: infra/docker/Dockerfile
     container_name: eo_backend
     restart: unless-stopped
-    entrypoint: ["/bin/bash", "/app/infra/docker/entrypoint.sh"]
+    entrypoint: [ "/bin/bash", "/app/infra/docker/entrypoint.sh" ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     depends_on:
       postgres:
         condition: service_healthy
       qdrant:
         condition: service_healthy
     environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-eo_archive}
@@ -81,18 +90,27 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-eo_admin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-eo_password}
       - PORT=${PORT:-8000}
-      - DEVICE=${DEVICE:-cpu}
+      - DEVICE=${DEVICE:-cuda}
       - OFFLINE_MODE=${OFFLINE_MODE:-false}
       - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-0}
       - TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE:-0}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyCMoJ7d3VETSegomGOoukHiiLHtmHK6VOM}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-AIzaSyCMoJ7d3VETSegomGOoukHiiLHtmHK6VOM}
     ports:
       - "${PORT:-8000}:8000"
     volumes:
+      - ./.env:/app/.env:ro
       - ./data:/app/data
       - ./models:/app/models
       - ./frontend:/app/frontend
       - ./backend:/app/backend
       - ./scripts:/app/scripts
+      - ./sar-detections:/app/sar-detections
+      - ./sar-processed:/app/sar-processed
+      - ./preprocessed:/app/preprocessed
+      - ./sar-inputs:/app/sar-inputs
+      - ./SARIntelligence:/app/SARIntelligence
+      - ./infra:/app/infra
 
 volumes:
   postgres_data:
