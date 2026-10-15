@@ -14,10 +14,14 @@
 [![MinIO](https://img.shields.io/badge/MinIO-S3%20Storage-C72C48?style=for-the-badge&logo=minio&logoColor=white)](https://min.io/)
 [![RemoteCLIP](https://img.shields.io/badge/RemoteCLIP-ViT--B%2F32-8A2BE2?style=for-the-badge)](https://huggingface.co/chendelong/RemoteCLIP)
 [![Sentinel-2](https://img.shields.io/badge/Sentinel--2-10m%20Copernicus-003399?style=for-the-badge)](https://sentinel.esa.int/)
+[![SARCLIP](https://img.shields.io/badge/SARCLIP-ViT--L%2F14%20768D-B91C1C?style=for-the-badge)](https://huggingface.co/)
+[![YOLOv8-OBB](https://img.shields.io/badge/YOLOv8--OBB-Maritime%20ATR-FF6B00?style=for-the-badge)](https://ultralytics.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Autonomous%20Agent-6D28D9?style=for-the-badge)](https://langchain-ai.github.io/langgraph/)
+[![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev/)
 
-**AI-Powered Earth Observation Intelligence, Multimodal Semantic Retrieval, Zero-Shot Search & Multi-Temporal Change Detection Platform**
+**AI-Powered Earth Observation Intelligence Platform — Multimodal Semantic Retrieval, Multi-Temporal Change Detection & Autonomous SAR Defence Reconnaissance**
 
-[Key Features](#-key-features-completed) • [Quickstart Guide](#️-quickstart--execution-guide-docker) • [Service Endpoints](#-service-access-endpoints) • [Repository Structure](#-repository-directory-structure) • [API Contract](#-api-specification)
+[Key Features](#-key-features-completed) • [SAR Intelligence](#️-sar-intelligence-module-defence) • [Quickstart Guide](#️-quickstart--execution-guide-docker) • [Service Endpoints](#-service-access-endpoints) • [Repository Structure](#-repository-directory-structure) • [API Contract](#-api-specification)
 
 </div>
 
@@ -110,6 +114,49 @@ Modern Earth Observation (EO) archives capture terabytes of satellite imagery da
 
 ---
 
+## 🛡️ SAR Intelligence Module (Defence)
+
+The **SARIntelligence** module is the dedicated defence-grade SAR (Synthetic Aperture Radar) reconnaissance sub-system built for the Ministry of Defence / Indian Army problem statement. It operates as a fully autonomous intelligence pipeline alongside the optical EO platform.
+
+### What It Does
+
+| Capability | Description |
+|---|---|
+| **Maritime Vessel Detection** | YOLOv8x-OBB detects and classifies 6 warship / merchant vessel classes with Oriented Bounding Boxes, calibrated RCS (dBsm), and wake velocity kinematics |
+| **Ground Military ATR** | MSTAR-trained 10-class Automatic Target Recognition for MBTs (T-72, T-62), IFVs (BMP-2), APCs (BTR-70), artillery, anti-aircraft guns and logistics vehicles |
+| **Military Activity Scoring** | Composite MAS (0.0–1.0) + DEFCON 1–5 tier classification derived from target count, RCS totals, temporal surge deltas and domain weights |
+| **Temporal Surge Analysis** | Sub-pixel phase-correlated T1 vs T2 comparison with pixel-level delta heatmaps and escalation ranking across all indexed scenes |
+| **768-D SARCLIP Semantic Search** | SAR-domain ViT-L-14 vision-language encoder enabling natural language AND image-to-image search across the entire SAR archive via Qdrant |
+| **Autonomous Agent (LangGraph)** | Multi-step ReAct agent with 4 tactical tools — SQL lookup, vector search, temporal surge, and full telemetry retrieval |
+| **Pluggable LLM Brain** | Gemini 2.5 Flash / Groq LLaMA-3.3-70B / OpenAI-compatible (Qwen, vLLM) / Sovereign Air-Gapped engine for classified deployments |
+| **Military SITREP Output** | Structured intelligence reports with GPS coordinates, OBB detections, threat classification, and commander's assessment |
+
+### Defence-Specific Design Choices
+
+- **Zero External Dependencies in Sovereign Mode**: `SOVEREIGN_MODE=true` disables all external LLM/API calls — the system uses a deterministic rule-based planner and purely local Qdrant + SQLite for fully air-gapped classified deployment.
+- **Calibrated Radar Physics**: All detections report physically calibrated metrics — Sigma-0 (σ⁰) backscatter in dB, RCS in dBsm, vessel beam/length in metres — enabling analyst verification without black-box outputs.
+- **Sub-Pixel Co-Registration**: Phase correlation alignment of T1/T2 temporal pairs eliminates false change alarms from spatial misalignment — critical for detecting genuine military build-up vs. satellite orbit drift artefacts.
+- **DEFCON Tier Automation**: Every ingested scene is automatically classified into DEFCON 1–5 based on a composite Military Activity Score — no manual threshold tuning required.
+
+### SAR Module Entry Points
+
+```bash
+# Run the full SAR ingestion pipeline (preprocess → detect → embed → index)
+python -m SARIntelligence.pipeline.ingestion_runner
+
+# Run the autonomous agent with a tactical query
+python -c "
+from SARIntelligence.agent.langgraph_orchestrator import SARLangGraphAgent
+agent = SARLangGraphAgent(llm_provider='gemini')
+result = agent.run('Identify all DEFCON-2 or higher maritime scenes in the South China Sea')
+print(result)
+"
+```
+
+👉 **[Full SAR Implementation Deep-Dive (`sar_implementation.md`)](sar_implementation.md)**
+
+---
+
 ## 🛠️ Quickstart & Execution Guide (Docker)
 
 The entire application stack (FastAPI Backend, Leaflet Web Applications, PostgreSQL/PostGIS, Qdrant Vector DB, and MinIO S3) is containerized and launches with a single command.
@@ -168,6 +215,12 @@ For a full breakdown of all subdirectories, modules, and component roles, please
 👉 **[Detailed Repository Directory Structure (`docs/repository_structure.md`)](docs/repository_structure.md)**
 
 ```text
+├── SARIntelligence/    # 🛡️ Defence SAR Intelligence — autonomous ATR, agent, LLM, SARCLIP
+│   ├── agent/          #    LangGraph orchestrator, LLM providers, 4 tactical tools
+│   ├── atr_models/     #    YOLOv8-OBB maritime, MSTAR 10-class ground ATR, CFAR
+│   ├── embeddings/     #    SARCLIP ViT-L-14 768-D encoder + Qdrant client
+│   ├── pipeline/       #    Ingestion runner, 6-layer template builder, MAS scoring
+│   └── preprocessing/  #    DN norm, Sigma-0 cal, phase co-registration, RGB composite
 ├── backend/            # FastAPI REST API, ingestion engine, HDBSCAN jobs & RemoteCLIP encoder
 ├── frontend/           # Glassmorphic aerospace web interfaces (Map, Retrieval, Change, Clustering, Review)
 ├── infra/              # Dockerfile, entrypoint.sh, and infrastructure Compose configurations
@@ -189,13 +242,19 @@ For complete route definitions, request/response JSON schemas, query parameters,
 
 ---
 
-## 🛡️ Provenance & Data Lineage
-All data sources, satellite collections, model architectures, and processing licenses are documented in [`PROVENANCE.md`](PROVENANCE.md).
+## 🎯 Problem Statement & Project Context
 
----
+This platform addresses **SIH-2026 PS26227** — Semantic Retrieval & Multi-Temporal Analysis of Satellite Imagery (Ministry of Defence / Indian Army).
 
-## 🎯 Complete Problem Statement & Project Context
+The system solves two core operational bottlenecks in modern Earth Observation:
+1. **Semantic Discovery** — Natural language and visual search over massive satellite archives
+2. **Multi-Temporal Change** — Automated, false-alarm-suppressed change detection across multi-year epochs
+3. **SAR Defence Reconnaissance** — Autonomous military ATR, threat scoring, and SITREP generation from SAR imagery
 
-For the comprehensive breakdown of the Ministry of Defence (MoD) / Indian Army Problem Statement (SIH-26227), architectural methodology, two-tiered false-alarm suppression strategy, end-to-end pipeline specifications, and requirement traceability, please refer to:
+For full SAR implementation details including ingestion pipeline, ATR models, agent architecture, and LLM layer:
 
-👉 **[Complete Project Context & Architecture Guide (`ProjectContext.md`)](ProjectContext.md)**
+👉 **[SAR Intelligence Implementation Deep-Dive (`sar_implementation.md`)](sar_implementation.md)**
+
+For complete API contracts and route definitions:
+
+👉 **[REST API Contract (`docs/api_contract.md`)](docs/api_contract.md)**
