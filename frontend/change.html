@@ -840,6 +840,13 @@
           <polyline points="10 9 9 9 8 9" />
         </svg>Review Tool
       </a>
+      <a href="/sar-agent.html" class="nav-item" id="nav-sar-agent" style="border-color: rgba(6,182,212,0.4); background: rgba(6,182,212,0.08);">
+        <svg class="ui-icon icon-cyan" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3v9l5 5" />
+          <circle cx="12" cy="12" r="3" fill="#06b6d4" />
+        </svg>SAR Tactical Agent
+      </a>
     </nav>
     <!-- Header Right Clean Controls (De-congested: time clock removed) -->
     <div class="header-status">
@@ -1119,10 +1126,17 @@
       const baseLat = 0.0;
       regionLayouts = {};
 
-      const sortedRegions = [...gridData.regions].sort((a, b) => {
+      // Filter out regions that have no tiles or zero dates (e.g. Maxar high-res regions)
+      const validRegions = (gridData.regions || []).filter(reg => {
+        const hasTiles = (gridData.tiles || []).some(t => t.region_id === reg.region_id);
+        const hasDates = reg.dates && reg.dates.length > 0;
+        return (hasTiles || hasDates) && (reg.tile_count > 0);
+      });
+
+      const sortedRegions = [...validRegions].sort((a, b) => {
         if (a.region_id.includes('berlin')) return -1;
         if (b.region_id.includes('berlin')) return 1;
-        return a.region_name.localeCompare(b.region_name);
+        return (a.region_name || a.region_id).localeCompare(b.region_name || b.region_id);
       });
 
       sortedRegions.forEach((reg, idx) => {
@@ -1232,7 +1246,8 @@
       allBtn.onclick = () => selectRegion(null);
       container.appendChild(allBtn);
 
-      gridData.regions.forEach(reg => {
+      const activeRegions = (gridData.regions || []).filter(reg => regionLayouts[reg.region_id]);
+      activeRegions.forEach(reg => {
         const btn = document.createElement('button');
         btn.className = 'hud-pill';
         btn.id = `pill-reg-${reg.region_id}`;
@@ -1382,6 +1397,7 @@
 
       // 1. Render Floating Region Signboards
       Object.values(regionLayouts).forEach(rLayout => {
+        if (!rLayout.dates || rLayout.dates.length === 0 || !rLayout.tile_count) return;
         const labelPos = canvasMode === 'atlas' ? rLayout.label_pos : rLayout.gps_label_pos;
         const isRegSelected = selectedRegionId === rLayout.region_id;
         const activeBorder = isRegSelected ? 'style="border-color: #10b981; box-shadow: 0 8px 28px rgba(0,0,0,0.95), 0 0 22px rgba(16, 185, 129, 0.7);"' : '';

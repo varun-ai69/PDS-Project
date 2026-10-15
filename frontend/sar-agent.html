@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CANOPUS — Tactical SAR Intelligence & Autonomous Agent Reconnaissance</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core App Stylesheets -->
+  <link rel="stylesheet" href="/frontend/index.css?v=20261014_sar_v2">
+  <link rel="stylesheet" href="/frontend/effects.css?v=20261014_sar_v2">
+
+  <!-- Markdown parser for rich SITREP synthesis -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    :root {
+      --bg-space: #050811;
+      --bg-panel: rgba(13, 19, 36, 0.75);
+      --bg-card: rgba(18, 26, 48, 0.6);
+      --border-cyan: rgba(6, 182, 212, 0.25);
+      --border-cyan-glow: rgba(6, 182, 212, 0.6);
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Outfit', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-space);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Fixed Header */
+    header {
+      height: 64px;
+      flex-shrink: 0;
+      background: rgba(7, 10, 20, 0.95);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 1000;
+    }
+
+    /* Main Scrollable Canvas */
+    .dashboard-viewport {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 24px 32px 80px 32px;
+      scroll-behavior: smooth;
+    }
+
+    .dashboard-viewport::-webkit-scrollbar {
+      width: 8px;
+    }
+    .dashboard-viewport::-webkit-scrollbar-track {
+      background: rgba(7, 10, 20, 0.9);
+    }
+    .dashboard-viewport::-webkit-scrollbar-thumb {
+      background: var(--border-cyan);
+      border-radius: 4px;
+    }
+    .dashboard-viewport::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
+
+    .dashboard-grid {
+      max-width: 1720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Glassmorphism Panel */
+    .tactical-glass {
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-cyan);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tactical-glass::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      opacity: 0.8;
+    }
+
+    /* Top Command Telemetry Bar */
+    .telemetry-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(10, 16, 32, 0.8);
+      border-radius: 8px;
+      border: 1px solid rgba(6, 182, 212, 0.15);
+      font-size: 13px;
+      font-family: var(--font-mono);
+    }
+
+    .telemetry-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Directive Input Hub */
+    .directive-hub {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .directive-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .directive-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .model-select {
+      background: #0d1527;
+      border: 1px solid var(--border-cyan);
+      color: #38bdf8;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Input Bar */
+    .input-wrapper {
+      display: flex;
+      gap: 12px;
+      background: rgba(8, 12, 24, 0.85);
+      border: 1px solid var(--border-cyan);
+      border-radius: 8px;
+      padding: 6px 12px;
+      transition: all 0.25s ease;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    }
+
+    .directive-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      padding: 8px 4px;
+    }
+
+    .directive-input::placeholder {
+      color: #64748b;
+    }
+
+    .transmit-btn {
+      background: linear-gradient(135deg, #0284c7, #06b6d4);
+      color: #fff;
+      border: none;
+      padding: 0 24px;
+      border-radius: 6px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .transmit-btn:hover {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .transmit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Multimodal Image Dropzone */
+    .multimodal-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .image-dropzone {
+      flex: 1;
+      border: 1px dashed rgba(6, 182, 212, 0.35);
+      background: rgba(11, 17, 34, 0.4);
+      border-radius: 8px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .image-dropzone:hover, .image-dropzone.dragover {
+      border-color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.08);
+    }
+
+    .dropzone-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .image-preview-chip {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #38bdf8;
+    }
+
+    .image-preview-thumb {
+      width: 28px;
+      height: 28px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .clear-img-btn {
+      background: transparent;
+      border: none;
+      color: var(--accent-rose);
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* Quick Preset Chips */
+    .presets-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .preset-chip {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preset-chip:hover {
+      border-color: var(--accent-cyan);
+      color: #38bdf8;
+      background: rgba(6, 182, 212, 0.08);
+      transform: translateY(-1px);
+    }
+
+    /* Loading Card */
+    .loading-card {
+      display: none;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .radar-scanner-box {
+      width: 72px;
+      height: 72px;
+      border: 2px solid var(--accent-cyan);
+      border-radius: 50%;
+      margin: 0 auto 16px auto;
+      position: relative;
+      animation: radar-sweep 2s linear infinite;
+    }
+
+    .radar-scanner-box::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: conic-gradient(from 0deg, transparent 70%, rgba(6, 182, 212, 0.5) 100%);
+      border-radius: 50%;
+    }
+
+    @keyframes radar-sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Output Stage (Two-Column Layout) */
+    .results-stage {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1200px) {
+      .results-stage {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Column: SITREP Report */
+    .sitrep-panel {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-heading {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+      padding-bottom: 12px;
+    }
+
+    .sitrep-body {
+      font-size: 14px;
+      line-height: 1.65;
+      color: #e2e8f0;
+    }
+
+    .sitrep-body h3 {
+      font-family: var(--font-display);
+      color: #38bdf8;
+      margin: 16px 0 8px 0;
+      font-size: 16px;
+    }
+
+    .sitrep-body h4 {
+      color: #7dd3fc;
+      margin: 12px 0 6px 0;
+      font-size: 14px;
+    }
+
+    .sitrep-body ul {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .sitrep-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .sitrep-body th, .sitrep-body td {
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 6px 10px;
+      text-align: left;
+    }
+
+    .sitrep-body th {
+      background: rgba(15, 23, 42, 0.9);
+      color: #38bdf8;
+    }
+
+    /* Reasoning Trajectory Accordion */
+    .trajectory-box {
+      background: rgba(8, 12, 24, 0.8);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .trajectory-header {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #06b6d4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .trajectory-steps {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .traj-step {
+      border-left: 2px solid var(--accent-cyan);
+      padding-left: 12px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .traj-step strong {
+      color: #f1f5f9;
+    }
+
+    /* Right Column: Visual Proof Artifacts Gallery */
+    .proof-gallery {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .proof-card {
+      background: rgba(10, 16, 32, 0.7);
+      border: 1px solid var(--border-cyan);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .proof-card:hover {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.15);
+    }
+
+    .card-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 15px;
+      color: #f8fafc;
+    }
+
+    .card-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .badge-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-critical {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #f87171;
+    }
+
+    .badge-high {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid #f59e0b;
+      color: #fbbf24;
+    }
+
+    .badge-normal {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #34d399;
+    }
+
+    /* Imagery Grid within Proof Card */
+    .imagery-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .imagery-grid.triplet-grid {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    @media (max-width: 900px) {
+      .imagery-grid.triplet-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .imagery-item {
+      position: relative;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: zoom-in;
+    }
+
+    .imagery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .imagery-item:hover img {
+      transform: scale(1.04);
+    }
+
+    .img-tag {
+      position: absolute;
+      bottom: 6px;
+      left: 6px;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #94a3b8;
+      border-top: 1px solid rgba(148, 163, 184, 0.1);
+      padding-top: 10px;
+    }
+
+    .inspect-telemetry-btn {
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid var(--border-cyan);
+      color: #38bdf8;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    .inspect-telemetry-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+    }
+
+    /* Inspection Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .modal-window {
+      background: #090e1d;
+      border: 1px solid var(--accent-cyan);
+      border-radius: 12px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 0 40px rgba(6, 182, 212, 0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-cyan);
+      padding-bottom: 12px;
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .close-modal-btn:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top Aerospace Navigation Header -->
+  <header>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M5 3v4" />
+          <path d="M19 17v4" />
+          <path d="M3 5h4" />
+          <path d="M17 19h4" />
+          <path d="M15 9l5-5" />
+          <path d="M9 15l-5 5" />
+        </svg>
+        <span style="font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: 0.5px; color: #fff;">CANOPUS</span>
+        <span style="color: #64748b; font-weight: 300;">/</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: #06b6d4; font-weight: 600;">TACTICAL SAR AI</span>
+      </a>
+    </div>
+
+    <!-- Navigation Pages -->
+    <nav style="display: flex; gap: 12px; align-items: center;">
+      <a href="/" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;">Map Explorer</a>
+      <a href="/retrieval.html" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;">Semantic Retrieval</a>
+      <a href="/change.html" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;">Change Detection</a>
+      <a href="/sar-agent.html" style="color: #06b6d4; text-decoration: none; font-size: 13px; font-weight: 600; background: rgba(6, 182, 212, 0.12); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(6, 182, 212, 0.3);">SAR Tactical Agent</a>
+    </nav>
+
+    <!-- Header Status Indicator -->
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="font-family: var(--font-mono); font-size: 12px; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+        <span class="dot-pulse"></span>
+        <span id="activeEngineText">GROQ LPU (GPT-OSS-120B)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="dashboard-viewport">
+    <div class="dashboard-grid">
+
+      <!-- Telemetry Strip -->
+      <div class="telemetry-strip">
+        <div class="telemetry-item">
+          <span class="dot-pulse"></span>
+          <span>SAR CATALOG: 70 HIGH-RES SCENES (20 GROUND, 10 OCEAN, 40 TEMPORAL)</span>
+        </div>
+        <div class="telemetry-item" style="color: #38bdf8;">
+          <span>QDRANT VECTOR SPACE: 768-D SARCLIP-ViT-L-14</span>
+        </div>
+        <div class="telemetry-item" style="color: #10b981;">
+          <span>SYSTEM READINESS: DEFCON 1-5 AUTONOMOUS READY</span>
+        </div>
+      </div>
+
+      <!-- Directive Input Hub -->
+      <section class="tactical-glass directive-hub">
+        <div class="directive-header">
+          <div class="directive-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
+            AUTONOMOUS DEFENSE INTELLIGENCE DIRECTIVE CONSOLE
+          </div>
+          <div class="controls-row">
+            <label style="font-size: 12px; color: #94a3b8; font-family: var(--font-mono);">LLM Engine:</label>
+            <select id="llmSelector" class="model-select" onchange="updateEngineBadge()">
+              <option value="groq" selected>Groq LPU (openai/gpt-oss-120b) — Fast</option>
+              <option value="gemini">Google Gemini (gemini-3.5-flash-lite)</option>
+              <option value="sovereign_offline">Sovereign Air-Gapped (100% Offline)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Directive Search Bar -->
+        <div class="input-wrapper">
+          <input type="text" id="directiveQueryInput" class="directive-input"
+            placeholder="Enter operational query (e.g. Find T-72 tanks in Akhnoor, show areas where activity peaked, find safe zones with zero targets)..."
+            onkeydown="if(event.key === 'Enter') submitDirective()" />
+          <button id="transmitDirectiveBtn" class="transmit-btn" onclick="submitDirective()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+            <span>TRANSMIT DIRECTIVE</span>
+          </button>
+        </div>
+
+        <!-- Multimodal Image Upload Dropzone -->
+        <div class="multimodal-row">
+          <div id="imageDropzone" class="image-dropzone" onclick="document.getElementById('sarImageFileInput').click()">
+            <div class="dropzone-label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <span>Optional: Drag &amp; drop a SAR radar target chip / image for 768-D Multimodal Visual Search</span>
+            </div>
+            <input type="file" id="sarImageFileInput" accept="image/*" style="display: none;" onchange="handleFileSelected(event)" />
+            <div id="imagePreviewChip" class="image-preview-chip">
+              <img id="imagePreviewThumb" class="image-preview-thumb" src="" alt="preview" />
+              <span id="imagePreviewName">image.png</span>
+              <button class="clear-img-btn" onclick="clearSelectedImage(event)" title="Remove image">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Operational Presets -->
+        <div class="presets-row">
+          <span style="font-family: var(--font-mono); font-size: 11px; color: #64748b;">TACTICAL PRESETS:</span>
+          <div class="preset-chip" onclick="applyPreset('Find all T-72 main battle tanks deployed in Akhnoor sector')">
+            <span>🛡️ T-72 Tanks (Akhnoor)</span>
+          </div>
+          <div class="preset-chip" onclick="applyPreset('Analyze where military activity has increased recently and show difference heatmap')">
+            <span>⏱️ Buildup Surge Differencing</span>
+          </div>
+          <div class="preset-chip" onclick="applyPreset('Give coordinates and image path where NO military activity is detected (Safe Zone)')">
+            <span>🟢 Zero-Activity Safe Zones</span>
+          </div>
+          <div class="preset-chip" onclick="applyPreset('Show me all naval warships in Bay of Bengal maritime sector')">
+            <span>🌊 Maritime Warships (Bay of Bengal)</span>
+          </div>
+          <div class="preset-chip" onclick="applyPreset('Locate air defense umbrella batteries and radar artillery in Uri corridor')">
+            <span>🚀 Air Defense Batteries (Uri)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Loading State Card -->
+      <section id="loadingCard" class="tactical-glass loading-card">
+        <div class="radar-scanner-box"></div>
+        <h4 style="font-family: var(--font-display); font-size: 18px; color: #38bdf8; margin-bottom: 6px;">
+          AUTONOMOUS REASONING &amp; TOOL DISPATCH IN PROGRESS
+        </h4>
+        <div id="loadingStatusText" style="font-family: var(--font-mono); font-size: 13px; color: #94a3b8;">
+          Evaluating operational intent and formulating tool plan...
+        </div>
+      </section>
+
+      <!-- Output Stage (Two-Column Layout) -->
+      <section id="resultsSection" class="results-stage">
+
+        <!-- Left Column: Comprehensive Military Intelligence SITREP -->
+        <div class="tactical-glass sitrep-panel">
+          <div class="panel-heading">
+            <span>📋 MILITARY INTELLIGENCE SITREP &amp; TACTICAL SYNTHESIS</span>
+            <span id="activeModelBadge" style="font-family: var(--font-mono); font-size: 11px; color: #10b981;">GROQ ACTIVE</span>
+          </div>
+
+          <!-- Reasoning Trajectory Box -->
+          <div class="trajectory-box">
+            <div class="trajectory-header" onclick="toggleTrajectory()">
+              <span id="trajectorySummaryTitle">⚡ AUTONOMOUS REASONING &amp; TOOL TRACE (1 STEP)</span>
+              <span id="trajToggleIcon">▼</span>
+            </div>
+            <div id="trajectoryStepsContainer" class="trajectory-steps"></div>
+          </div>
+
+          <!-- Markdown Formatted SITREP -->
+          <div id="sitrepMarkdownBody" class="sitrep-body"></div>
+        </div>
+
+        <!-- Right Column: Visual Proof & Imagery Artifacts Gallery -->
+        <div class="tactical-glass proof-gallery">
+          <div class="panel-heading">
+            <span>🛰️ VERIFIED RADAR IMAGERY ARTIFACTS (VISUAL PROOF)</span>
+            <span id="targetsFoundCountBadge" style="font-family: var(--font-mono); font-size: 11px; color: #38bdf8;">0 SCENES</span>
+          </div>
+
+          <!-- Cards Container -->
+          <div id="proofCardsContainer" style="display: flex; flex-direction: column; gap: 16px;"></div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Deep Telemetry Modal (Lightbox) -->
+  <div id="telemetryModal" class="modal-backdrop" onclick="if(event.target === this) closeModal()">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <h3 id="modalSceneTitle" style="color: #38bdf8; font-family: var(--font-display); font-size: 18px;">SCENE TELEMETRY</h3>
+          <div id="modalSceneSubtitle" style="color: #64748b; font-family: var(--font-mono); font-size: 12px;">ID: ground_armor_tanks_02</div>
+        </div>
+        <button class="close-modal-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+          <img id="modalOverlayImg" src="" alt="Detection Overlay" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-cyan);" />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div id="modalMetaBox" style="background: rgba(15,23,42,0.8); padding: 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6;"></div>
+          <h4 style="color: #38bdf8; font-size: 14px; font-family: var(--font-display);">Granular Vehicle Bounding Boxes &amp; RCS</h4>
+          <div id="modalTargetsTable" style="max-height: 250px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client-Side App Logic -->
+  <script>
+    let selectedImageFile = null;
+
+    function updateEngineBadge() {
+      const select = document.getElementById('llmSelector');
+      const val = select.value;
+      const badge = document.getElementById('activeEngineText');
+      if (val === 'groq') badge.innerText = 'GROQ LPU (GPT-OSS-120B)';
+      else if (val === 'gemini') badge.innerText = 'GOOGLE GEMINI 3.5 FLASH';
+      else badge.innerText = 'SOVEREIGN AIR-GAPPED (OFFLINE)';
+    }
+
+    function applyPreset(text) {
+      document.getElementById('directiveQueryInput').value = text;
+      submitDirective();
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      selectedImageFile = file;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('imagePreviewThumb').src = e.target.result;
+        document.getElementById('imagePreviewName').innerText = file.name;
+        document.getElementById('imagePreviewChip').style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleFileSelected(event) {
+      const file = event.target.files[0];
+      handleFile(file);
+    }
+
+    // Initialize Drag & Drop listeners on dropzone
+    document.addEventListener('DOMContentLoaded', () => {
+      const dropzone = document.getElementById('imageDropzone');
+      if (dropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+          dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+          }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+          dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+          }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+          const dt = e.dataTransfer;
+          const files = dt.files;
+          if (files && files.length > 0) {
+            handleFile(files[0]);
+          }
+        }, false);
+      }
+    });
+
+    function clearSelectedImage(event) {
+      if (event) event.stopPropagation();
+      selectedImageFile = null;
+      document.getElementById('sarImageFileInput').value = '';
+      document.getElementById('imagePreviewChip').style.display = 'none';
+    }
+
+    function toggleTrajectory() {
+      const container = document.getElementById('trajectoryStepsContainer');
+      const icon = document.getElementById('trajToggleIcon');
+      if (container.style.display === 'none') {
+        container.style.display = 'flex';
+        icon.innerText = '▲';
+      } else {
+        container.style.display = 'none';
+        icon.innerText = '▼';
+      }
+    }
+
+    async function submitDirective() {
+      const queryInput = document.getElementById('directiveQueryInput');
+      const query = queryInput.value.trim();
+      const provider = document.getElementById('llmSelector').value;
+
+      if (!query && !selectedImageFile) {
+        alert("Please enter a tactical query or upload a SAR target image.");
+        return;
+      }
+
+      const transmitBtn = document.getElementById('transmitDirectiveBtn');
+      const loadingCard = document.getElementById('loadingCard');
+      const resultsSection = document.getElementById('resultsSection');
+      const loadingText = document.getElementById('loadingStatusText');
+
+      transmitBtn.disabled = true;
+      transmitBtn.innerText = "RECONNAISSANCE ACTIVE...";
+      loadingCard.style.display = 'block';
+      resultsSection.style.display = 'none';
+
+      const hints = [
+        "Groq LPU parsing commander operational directive...",
+        "Formulating multi-node LangGraph ReAct execution plan...",
+        "Executing relational telemetry lookups and spatial filters...",
+        "Correlating 768-D SARCLIP embeddings in Qdrant...",
+        "Synthesizing defense SITREP and packaging visual proof..."
+      ];
+      let hintIdx = 0;
+      const interval = setInterval(() => {
+        hintIdx = (hintIdx + 1) % hints.length;
+        loadingText.innerText = hints[hintIdx];
+      }, 1400);
+
+      try {
+        let response;
+        if (selectedImageFile) {
+          // Multimodal Image Upload Form
+          const formData = new FormData();
+          formData.append('file', selectedImageFile);
+          if (query) formData.append('query', query);
+          formData.append('provider', provider);
+
+          response = await fetch('/api/sar/query/image', {
+            method: 'POST',
+            body: formData
+          });
+        } else {
+          // Standard JSON Directive
+          response = await fetch('/api/sar/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: query,
+              provider: provider,
+              prefer_offline: (provider === 'sovereign_offline')
+            })
+          });
+        }
+
+        clearInterval(interval);
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ detail: response.statusText }));
+          throw new Error(err.detail || "Direct query transmission failed.");
+        }
+
+        const data = await response.json();
+        renderResults(data);
+
+      } catch (err) {
+        clearInterval(interval);
+        console.error("Execution error:", err);
+        alert("Tactical Query Execution Error: " + err.message);
+      } finally {
+        transmitBtn.disabled = false;
+        transmitBtn.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+          <span>TRANSMIT DIRECTIVE</span>
+        `;
+        loadingCard.style.display = 'none';
+      }
+    }
+
+    function renderResults(data) {
+      const resultsSection = document.getElementById('resultsSection');
+      resultsSection.style.display = 'grid';
+
+      // 1. Update Provider Badge
+      const info = data.provider_info || {};
+      document.getElementById('activeModelBadge').innerText = `${(info.model || 'GROQ-120B').toUpperCase()}`;
+
+      // 2. Render Trajectory Trace
+      const traj = data.reasoning_trajectory || [];
+      document.getElementById('trajectorySummaryTitle').innerText = `⚡ AUTONOMOUS REASONING & TOOL TRACE (${traj.length} STEP${traj.length === 1 ? '' : 'S'})`;
+      const trajContainer = document.getElementById('trajectoryStepsContainer');
+      trajContainer.innerHTML = traj.map((s, idx) => `
+        <div class="traj-step">
+          <div><strong>[STEP ${s.step || idx + 1}] Tool: <code>${s.tool || 'Autonomous Planner'}</code></strong></div>
+          <div style="margin: 2px 0;"><em>Thought:</em> ${s.thought || ''}</div>
+          ${s.observation_summary ? `<div style="color: #38bdf8;">↳ Observation: ${s.observation_summary}</div>` : ''}
+        </div>
+      `).join('');
+
+      // 3. Render Markdown SITREP
+      const sitrepBody = document.getElementById('sitrepMarkdownBody');
+      sitrepBody.innerHTML = marked.parse(data.final_response || "No report generated.");
+
+      // 4. Render Proof Cards Gallery
+      const directData = data.direct_data || {};
+      const scenes = directData.results || [];
+      document.getElementById('targetsFoundCountBadge').innerText = `${scenes.length} SCENE${scenes.length === 1 ? '' : 'S'} LOCALIZED`;
+
+      const proofContainer = document.getElementById('proofCardsContainer');
+      let cardsHtml = '';
+
+      if (directData.uploaded_image) {
+        cardsHtml += `
+          <div class="proof-card" style="border-color: #06b6d4; background: rgba(6, 182, 212, 0.08);">
+            <div class="card-topbar">
+              <div>
+                <div class="card-title" style="color: #38bdf8;">📥 UPLOADED QUERY TARGET CHIP</div>
+                <div class="card-subtitle">MULTIMODAL VISUAL QUERY | 768-D SARCLIP EMBEDDING CORRELATED</div>
+              </div>
+              <div class="badge-pill badge-normal">INPUT REFERENCE</div>
+            </div>
+            <div style="display: flex; gap: 16px; align-items: center;">
+              <div style="width: 140px; height: 140px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(6,182,212,0.4); background: #000; flex-shrink: 0;">
+                <img src="${directData.uploaded_image}" alt="Uploaded Target Chip" style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px; color: #94a3b8; line-height: 1.6;">
+                <div>Vector Space: <strong>Qdrant 768-D SARCLIP</strong></div>
+                <div>Similarity Metric: <strong>Cosine Distance</strong></div>
+                <div style="color: #38bdf8; margin-top: 6px;">Visual target signatures and spatial geometries matched across 70 high-res SAR scenes below.</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (scenes.length === 0) {
+        cardsHtml += `
+          <div style="padding: 24px; text-align: center; color: #64748b; font-family: var(--font-mono); font-size: 13px;">
+            Zero target formations detected in this sector. Clear terrain / calm sea confirmed.
+          </div>
+        `;
+      } else {
+        cardsHtml += scenes.map(scene => renderProofCard(scene)).join('');
+      }
+
+      proofContainer.innerHTML = cardsHtml;
+
+      // Scroll smoothly into results
+      resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderProofCard(scene) {
+      const sid = scene.scene_id || scene.pair_id || 'UNKNOWN';
+      const isTemporal = !!scene.net_delta || !!scene.diff_heatmap_url || scene.is_temporal;
+
+      let sname = scene.scene_name || sid;
+      if (isTemporal && sname.startsWith('temporal_pair_')) {
+        const cleanName = sname.replace('_T2_current', '').replace('_T1_baseline', '').toUpperCase().replace(/_/g, ' ');
+        sname = `${cleanName}: ${scene.sector || 'TACTICAL CORRIDOR'} (${scene.net_delta ? 'SURGE DELTA ' + scene.net_delta : 'ESCALATION'})`;
+      }
+
+      const sec = scene.sector || 'OPERATIONAL SECTOR';
+      const coords = scene.coordinates || { lat: 0, lon: 0 };
+      const targets = scene.total_targets !== undefined ? scene.total_targets : (scene.current_targets !== undefined ? scene.current_targets : 0);
+
+      // DEFCON Badge
+      const defcon = scene.defcon_tier || scene.threat_assessment || 'DEFCON_3_ELEVATED';
+      let badgeClass = 'badge-normal';
+      if (defcon.includes('CRITICAL') || defcon.includes('DEFCON_1') || defcon.includes('ESCALATION')) badgeClass = 'badge-critical';
+      else if (defcon.includes('HIGH') || defcon.includes('DEFCON_2') || defcon.includes('SURGE')) badgeClass = 'badge-high';
+
+      // Build Imagery Grid: 3-Image Triplet for Temporal, 2-View for Standard
+      let imageryHtml = '';
+      if (isTemporal) {
+        const t1Url = scene.t1_image_url || '';
+        const t2Url = scene.t2_image_url || '';
+        const diffUrl = scene.diff_heatmap_url || '';
+
+        imageryHtml = `
+          <div class="imagery-grid triplet-grid">
+            <div class="imagery-item" onclick="openLightbox('${t1Url}', '${scene.baseline_scene_id || sid}', 'T1 Baseline Pass (Before)')">
+              <img src="${t1Url}" alt="T1 Baseline" onerror="this.onerror=null; this.src='/sar-detections/multi_temporal/temporal_pair_01_T1_baseline_detected.png';" />
+              <div class="img-tag" style="border-color: #38bdf8; color: #7dd3fc;">T1 BEFORE (BASELINE)</div>
+            </div>
+            <div class="imagery-item" onclick="openLightbox('${t2Url}', '${scene.current_scene_id || sid}', 'T2 Current Pass (After)')">
+              <img src="${t2Url}" alt="T2 Current" onerror="this.onerror=null; this.src='/sar-detections/multi_temporal/temporal_pair_01_T2_current_detected.png';" />
+              <div class="img-tag" style="border-color: #f43f5e; color: #fb7185;">T2 AFTER (CURRENT)</div>
+            </div>
+            <div class="imagery-item" onclick="openLightbox('${diffUrl}', '${sid}', 'Difference Heatmap (Delta)')">
+              <img src="${diffUrl}" alt="Difference Heatmap" />
+              <div class="img-tag" style="border-color: #10b981; color: #6ee7b7;">SURGE HEATMAP (Δ)</div>
+            </div>
+          </div>
+        `;
+      } else {
+        const overlayUrl = scene.overlay_url || '';
+        const preprocessedUrl = scene.preprocessed_url || '';
+
+        imageryHtml = `
+          <div class="imagery-grid">
+            <div class="imagery-item" onclick="openLightbox('${overlayUrl}', '${sid}', 'Detection HUD Overlay')">
+              <img src="${overlayUrl}" alt="Detection Overlay" />
+              <div class="img-tag">DETECTION OVERLAY (HUD)</div>
+            </div>
+            <div class="imagery-item" onclick="openLightbox('${preprocessedUrl}', '${sid}', 'Cleaned Radar Pass')">
+              <img src="${preprocessedUrl}" alt="Cleaned Radar Pass" />
+              <div class="img-tag">CLEANED RADAR PASS</div>
+            </div>
+          </div>
+        `;
+      }
+
+      const inspectTargetId = scene.current_scene_id || sid;
+
+      return `
+        <div class="proof-card">
+          <div class="card-topbar">
+            <div>
+              <div class="card-title">${sname}</div>
+              <div class="card-subtitle">SECTOR: ${sec} | ID: <code>${sid}</code></div>
+            </div>
+            <div class="badge-pill ${badgeClass}">${defcon.replace('DEFCON_', 'DEFCON ')}</div>
+          </div>
+
+          <!-- Imagery Proof Grid (3-Images for Temporal, 2 for Standard) -->
+          ${imageryHtml}
+
+          <!-- Card Footer Telemetry -->
+          <div class="card-footer">
+            <div>
+              <span>COORDS: <code>${coords.lat.toFixed(4)}°N, ${coords.lon.toFixed(4)}°E</code></span>
+              <span style="margin: 0 8px;">|</span>
+              <span style="color: #38bdf8;">TARGETS: <strong>${targets}</strong></span>
+              ${scene.net_delta ? `<span style="margin-left: 8px; color: #f43f5e; font-weight: 700;">(SURGE DELTA: ${scene.net_delta})</span>` : ''}
+              ${scene.baseline_targets !== undefined ? `<span style="margin-left: 6px; color: #64748b; font-size: 10px;">(T1: ${scene.baseline_targets} → T2: ${scene.current_targets})</span>` : ''}
+            </div>
+            <button class="inspect-telemetry-btn" onclick="inspectSceneTelemetry('${inspectTargetId}')">
+              INSPECT TELEMETRY
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function inspectSceneTelemetry(sceneId) {
+      try {
+        const res = await fetch(`/api/sar/scene/${encodeURIComponent(sceneId)}`);
+        if (!res.ok) throw new Error("Could not retrieve template telemetry.");
+        const tel = await res.json();
+
+        document.getElementById('modalSceneTitle').innerText = tel.scene_name || sceneId;
+        document.getElementById('modalSceneSubtitle').innerText = `SECTOR: ${tel.sector} | ID: ${sceneId}`;
+        document.getElementById('modalOverlayImg').src = tel.image_artifacts ? tel.image_artifacts.overlay_url : '';
+
+        // Metadata summary
+        document.getElementById('modalMetaBox').innerHTML = `
+          <div><strong>Domain:</strong> ${tel.domain}</div>
+          <div><strong>Center GPS:</strong> ${tel.center_coordinates.lat.toFixed(6)}°N, ${tel.center_coordinates.lon.toFixed(6)}°E</div>
+          <div><strong>Total Verified Assets:</strong> ${tel.total_targets}</div>
+          <div><strong>DEFCON Alert Status:</strong> <span style="color: #f87171;">${tel.defcon_tier}</span></div>
+          <div><strong>Activity Score (MAS):</strong> ${tel.mas_score}</div>
+        `;
+
+        // Granular targets list
+        const detections = tel.detections || [];
+        if (detections.length === 0) {
+          document.getElementById('modalTargetsTable').innerHTML = `<div style="color: #64748b; font-size: 12px;">Zero military scatterers detected.</div>`;
+        } else {
+          document.getElementById('modalTargetsTable').innerHTML = `
+            <table style="width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px;">
+              <thead>
+                <tr style="color: #38bdf8; text-align: left; border-bottom: 1px solid rgba(6,182,212,0.3);">
+                  <th style="padding: 4px;">ID</th>
+                  <th style="padding: 4px;">CLASS</th>
+                  <th style="padding: 4px;">CONF</th>
+                  <th style="padding: 4px;">RCS (dBsm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${detections.map(d => `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 4px; color: #fff;">${d.target_id}</td>
+                    <td style="padding: 4px; color: #7dd3fc;">${d.class}</td>
+                    <td style="padding: 4px;">${(d.confidence * 100).toFixed(1)}%</td>
+                    <td style="padding: 4px; color: #f59e0b;">${d.rcs_db}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        }
+
+        document.getElementById('telemetryModal').style.display = 'flex';
+      } catch (err) {
+        alert("Telemetry error: " + err.message);
+      }
+    }
+
+    function openLightbox(url, sceneId, title) {
+      inspectSceneTelemetry(sceneId);
+    }
+
+    function closeModal() {
+      document.getElementById('telemetryModal').style.display = 'none';
+    }
+  </script>
+</body>
+
+</html>

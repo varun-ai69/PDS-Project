@@ -1,6 +1,12 @@
 import os
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(REPO_ROOT / ".env", override=True)
+load_dotenv(Path("/app/.env"), override=True)
+load_dotenv(override=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,6 +25,7 @@ from backend.api.routers.change import router as change_router
 from backend.api.routers.discovery import router as discovery_router
 from backend.api.routers.chat import router as chat_router
 from backend.api.routers.review import router as review_router
+from backend.api.routers.sar_agent import router as sar_agent_router
 
 app = FastAPI(
     title="Satellite Imagery Semantic Retrieval & Change Detection API",
@@ -44,6 +51,7 @@ app.include_router(change_router)
 app.include_router(discovery_router)
 app.include_router(chat_router)
 app.include_router(review_router)
+app.include_router(sar_agent_router)
 
 # Mount Data & Static directories if they exist
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -55,6 +63,30 @@ frontend_dir.mkdir(parents=True, exist_ok=True)
 
 app.mount("/data", StaticFiles(directory=str(data_dir)), name="data")
 app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
+
+sar_detections_dir = REPO_ROOT / "sar-detections"
+sar_detections_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/sar-detections", StaticFiles(directory=str(sar_detections_dir)), name="sar-detections")
+
+sar_processed_dir = REPO_ROOT / "sar-processed"
+sar_processed_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/sar-processed", StaticFiles(directory=str(sar_processed_dir)), name="sar-processed")
+
+preprocessed_dir = REPO_ROOT / "preprocessed"
+preprocessed_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/preprocessed", StaticFiles(directory=str(preprocessed_dir)), name="preprocessed")
+
+sar_inputs_dir = REPO_ROOT / "sar-inputs"
+sar_inputs_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/sar-inputs", StaticFiles(directory=str(sar_inputs_dir)), name="sar-inputs")
+
+sar_diffs_dir = REPO_ROOT / "sar-diffs"
+sar_diffs_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/sar-diffs", StaticFiles(directory=str(sar_diffs_dir)), name="sar-diffs")
+
+sar_uploads_dir = data_dir / "uploads"
+sar_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/sar-uploads", StaticFiles(directory=str(sar_uploads_dir)), name="sar-uploads")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -107,6 +139,15 @@ def read_review_page():
     review_file = frontend_dir / "review.html"
     if review_file.exists():
         return FileResponse(str(review_file))
+    return FileResponse(str(frontend_dir / "index.html"))
+
+
+@app.get("/sar-agent")
+@app.get("/sar-agent.html")
+def read_sar_agent_page():
+    sar_agent_file = frontend_dir / "sar-agent.html"
+    if sar_agent_file.exists():
+        return FileResponse(str(sar_agent_file))
     return FileResponse(str(frontend_dir / "index.html"))
 
 

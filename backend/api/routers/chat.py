@@ -172,8 +172,8 @@ def list_conversations(
             rows = cur.fetchall()
             return [dict(row) for row in rows]
     except Exception as e:
-        log.error(f"Failed to list conversations for user {user_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        log.warning(f"Could not list conversations (PostgreSQL offline/air-gapped): {e}")
+        return []
     finally:
         if conn:
             conn.close()
@@ -188,10 +188,9 @@ def create_conversation(
     """
     ensure_chat_schema_migrated()
     conn = None
+    conversation_id = payload.conversation_id or f"conv_{uuid.uuid4().hex[:12]}"
+    title = payload.title.strip() or "New Tactical Search"
     try:
-        conversation_id = payload.conversation_id or f"conv_{uuid.uuid4().hex[:12]}"
-        title = payload.title.strip() or "New Tactical Search"
-
         conn = get_pg_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
@@ -207,8 +206,15 @@ def create_conversation(
     except Exception as e:
         if conn:
             conn.rollback()
-        log.error(f"Failed to create conversation: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        log.warning(f"Database offline, returning session conversation object: {e}")
+        return {
+            "conversation_id": conversation_id,
+            "user_id": payload.user_id,
+            "title": title,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+            "message_count": 0
+        }
     finally:
         if conn:
             conn.close()
