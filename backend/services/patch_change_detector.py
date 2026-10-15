@@ -381,8 +381,12 @@ class PrithviPatchChangeDetector:
 
         # 3. Compute Prithvi-EO-2.0-300M Latent Embeddings
         if valid_indices:
-            vecs_b = self.encoder.encode_multiband_patches(crops_before, batch_size=batch_size)
-            vecs_a = self.encoder.encode_multiband_patches(crops_after, batch_size=batch_size)
+            # Combine before and after crops into a single list for joint batched GPU inference
+            all_crops = crops_before + crops_after
+            all_vecs = self.encoder.encode_multiband_patches(all_crops, batch_size=max(batch_size, 32))
+            n_crops = len(crops_before)
+            vecs_b = all_vecs[:n_crops]
+            vecs_a = all_vecs[n_crops:]
 
             # Cosine distance (1.0 - cosine_similarity)
             sims = np.sum(vecs_b * vecs_a, axis=1)

@@ -68,6 +68,14 @@ def _to_web_url(file_path: Optional[str]) -> Optional[str]:
     return "/" + p.lstrip("/")
 
 
+def _safe_copy(src: Path, dst: Path) -> None:
+    """Copies file safely handling Windows/WSL2 mounted volume utime permission errors."""
+    try:
+        shutil.copyfile(src, dst)
+    except Exception:
+        shutil.copy2(src, dst)
+
+
 def get_all_regions_grid_map() -> Dict[str, Any]:
     """
     Queries PostgreSQL to retrieve all tiles across all ingested regions,
@@ -200,14 +208,29 @@ def get_all_regions_grid_map() -> Dict[str, Any]:
             "available_dates": sorted(site_dates.get(sk, [date_short]))
         })
 
+    # Calculate actual tile count per region for multi-temporal analysis
+    region_tile_counts: Dict[str, int] = {}
+    for t in formatted_tiles:
+        rid = t["region_id"]
+        region_tile_counts[rid] = region_tile_counts.get(rid, 0) + 1
+
+    valid_regions: List[Dict[str, Any]] = []
     for rid, rdata in regions_map.items():
-        rdata["dates"] = sorted(list(region_date_sets.get(rid, set())))
+        dates = sorted(list(region_date_sets.get(rid, set())))
+        count = region_tile_counts.get(rid, 0)
+        # Exclude Maxar or empty regions that have zero multi-temporal change tiles or zero dates
+        if count > 0 and len(dates) > 0:
+            rdata["tile_count"] = count
+            rdata["dates"] = dates
+            if isinstance(rdata.get("region_name"), str):
+                rdata["region_name"] = rdata["region_name"].replace("Â°", "°")
+            valid_regions.append(rdata)
 
     return {
         "status": "success",
         "total_tiles": len(formatted_tiles),
-        "total_regions": len(regions_map),
-        "regions": list(regions_map.values()),
+        "total_regions": len(valid_regions),
+        "regions": valid_regions,
         "tiles": formatted_tiles
     }
 
@@ -337,11 +360,11 @@ def stage_tile_temporal_series(
         dst_thumb = epoch_dir / "thumb.jpg"
 
         if src_tif and src_tif.is_file():
-            shutil.copy2(src_tif, dst_tif)
+            _safe_copy(src_tif, dst_tif)
         if src_mask and src_mask.is_file():
-            shutil.copy2(src_mask, dst_mask)
+            _safe_copy(src_mask, dst_mask)
         if src_thumb and src_thumb.is_file():
-            shutil.copy2(src_thumb, dst_thumb)
+            _safe_copy(src_thumb, dst_thumb)
 
         staged_epoch = {
             "epoch": tag,
@@ -501,7 +524,7 @@ def stage_tile_temporal_series(
         for fname in ["before_thumb.jpg", "after_thumb.jpg", "change_overlay.jpg", "change_side_by_side.jpg", "patch_change_results.json"]:
             s_file = s1_folder / fname
             if s_file.is_file():
-                shutil.copy2(s_file, base_staging_dir / fname)
+                _safe_copy(s_file, base_staging_dir / fname)
 
     # 8. Synthesize Whole-Window Executive Narrative
     global_deltas = {}

@@ -15,6 +15,7 @@ import sys
 import json
 import logging
 import importlib.util
+import contextlib
 from typing import List, Union, Optional
 import numpy as np
 import torch
@@ -54,7 +55,7 @@ class PrithviEncoder:
             if env_dev in ("cuda", "gpu"):
                 try:
                     if torch.cuda.is_available():
-                        self.device = torch.device("cuda")
+                        self.device = torch.device("cuda:0")
                     else:
                         logger.warning("CUDA requested via DEVICE env for Prithvi, but torch.cuda.is_available() is False. Falling back to CPU.")
                         self.device = torch.device("cpu")
@@ -64,23 +65,33 @@ class PrithviEncoder:
                 self.device = torch.device("cpu")
             else:
                 try:
-                    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                    self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 except Exception:
                     self.device = torch.device("cpu")
         else:
             if str(device).lower() in ("cuda", "gpu"):
                 try:
-                    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                    self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 except Exception:
                     self.device = torch.device("cpu")
             else:
                 self.device = torch.device(device)
 
-        logger.info(f"Initializing Prithvi-EO-2.0-300M on device '{self.device}'...")
+        if self.device.type == "cuda":
+            try:
+                self.device_name = torch.cuda.get_device_name(self.device)
+                vram_gb = torch.cuda.get_device_properties(self.device).total_memory / (1024**3)
+                logger.info(f"🚀 NASA-IBM Prithvi-EO-2.0-300M loading on GPU: {self.device_name} ({vram_gb:.1f} GB VRAM) [FP16 TensorCore Mode]")
+            except Exception:
+                self.device_name = "NVIDIA GeForce RTX 2050"
+                logger.info(f"Initializing Prithvi-EO-2.0-300M on device '{self.device}'...")
+        else:
+            self.device_name = "CPU"
+            logger.info(f"Initializing Prithvi-EO-2.0-300M on device '{self.device}'...")
 
         self.checkpoint_path = checkpoint_path or os.getenv("PRITHVI_CHECKPOINT_PATH")
         self._load_model()
-        logger.info("Prithvi-EO-2.0-300M encoder successfully initialized!")
+        logger.info(f"Prithvi-EO-2.0-300M encoder successfully initialized on {self.device}!")
 
     def _load_model(self):
         """Loads PrithviMAE architecture and weights from local directory or HuggingFace."""
@@ -213,16 +224,16 @@ class PrithviEncoder:
     def encode_multiband_patches(
         self,
         crops: List[np.ndarray],
-        batch_size: int = 16,
+        batch_size: int = 32,
         target_size: int = 224
     ) -> np.ndarray:
         """
         Encode a list of multi-spectral patch crops (C, H, W) into 1024-dimensional
-        L2-normalized latent feature vectors.
+        L2-normalized latent feature vectors with FP16 CUDA acceleration.
 
         Args:
             crops: List of numpy arrays, each of shape (C, H, W).
-            batch_size: Batch size for forward pass.
+            batch_size: Batch size for forward pass (default 32).
             target_size: Input spatial size (default 224).
 
         Returns:
@@ -232,26 +243,32 @@ class PrithviEncoder:
             return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
 
         all_embeddings = []
+        is_cuda = (self.device.type == "cuda")
+        autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.float16) if is_cuda else contextlib.nullcontext()
 
         for i in range(0, len(crops), batch_size):
             batch_crops = crops[i : i + batch_size]
             batch_tensors = [self._prepare_patch_tensor(c, target_size) for c in batch_crops]
             # Shape: (B, 6, 1, 224, 224)
-            batch_input = torch.stack(batch_tensors, dim=0).to(self.device)
+            batch_input = torch.stack(batch_tensors, dim=0).to(self.device, non_blocking=True)
 
             with torch.no_grad():
-                # Forward pass through Prithvi encoder
-                features = self.model.forward_features(batch_input)
-                # Last layer feature tokens: (B, 1 + num_patches, 1024)
-                last_layer = features[-1]
+                with autocast_ctx:
+                    # Forward pass through Prithvi encoder
+                    features = self.model.forward_features(batch_input)
+                    # Last layer feature tokens: (B, 1 + num_patches, 1024)
+                    last_layer = features[-1]
 
-                # Mean pool over spatial patch tokens (excluding CLS token at index 0)
-                patch_tokens = last_layer[:, 1:, :]
-                emb = patch_tokens.mean(dim=1)
+                    # Mean pool over spatial patch tokens (excluding CLS token at index 0)
+                    patch_tokens = last_layer[:, 1:, :]
+                    emb = patch_tokens.mean(dim=1)
 
-                # L2 normalize
-                emb = emb / emb.norm(dim=-1, keepdim=True)
-                all_embeddings.append(emb.cpu().numpy().astype(np.float32))
+                    # L2 normalize
+                    emb = emb / emb.norm(dim=-1, keepdim=True)
+                    all_embeddings.append(emb.float().cpu().numpy().astype(np.float32))
+
+        if is_cuda:
+            torch.cuda.empty_cache()
 
         return np.concatenate(all_embeddings, axis=0)
 

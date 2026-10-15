@@ -155,19 +155,25 @@ class PrithviTemporalSplitter:
 
         # Extract patch crops for all epochs
         all_epoch_patches = []
+        flat_crops = []
+        epoch_lens = []
         for arr in epoch_rasters:
             patches = []
             for r in range(grid_patches):
                 for c in range(grid_patches):
                     crop = arr[:, r * ph : (r + 1) * ph, c * pw : (c + 1) * pw]
                     patches.append(crop)
+                    flat_crops.append(crop)
             all_epoch_patches.append(patches)
+            epoch_lens.append(len(patches))
 
-        # Compute Prithvi 1024-D embeddings for each epoch
+        # Compute Prithvi 1024-D embeddings for ALL epochs in a single high-throughput GPU pass
+        all_vecs = self.encoder.encode_multiband_patches(flat_crops, batch_size=32)
         epoch_embeddings = []
-        for idx, patches in enumerate(all_epoch_patches):
-            vecs = self.encoder.encode_multiband_patches(patches, batch_size=16)
-            epoch_embeddings.append(vecs)
+        offset = 0
+        for l in epoch_lens:
+            epoch_embeddings.append(all_vecs[offset : offset + l])
+            offset += l
 
         # Array of shape (K, num_patches, 1024)
         F = np.stack(epoch_embeddings, axis=0)
