@@ -1,8 +1,10 @@
-# ==========================================
-# CANOPUS Git Ignore Rules
+﻿# ==========================================
+# CANOPUS + SARIntelligence Git Ignore Rules
 # ==========================================
 
-# 1. Satellite Imagery, Rasters, Tiles & Previews
+# ------------------------------------------
+# 1. Satellite Imagery, Rasters & Previews
+# ------------------------------------------
 *.tif
 *.tiff
 *.jpg
@@ -14,6 +16,8 @@
 *.npy
 *.npz
 *.pdf
+
+# Optical pipeline data dirs
 data/tiles/
 data/uploads/
 data/change_staging/
@@ -21,10 +25,34 @@ data/runs/
 data/processed_scenes/
 data/cache/
 data/exports/
+data/calibration/
+
+# SAR Intelligence data dirs (runtime only)
+SARIntelligence/data/processed/
+SARIntelligence/data/detections/
+SARIntelligence/data/previews/
+SARIntelligence/data/preprocessed/
+SARIntelligence/data/temporal_diffs/
+SARIntelligence/data/qdrant_local/
+SARIntelligence/data/templates/
+SARIntelligence/data/test_fetch/
+SARIntelligence/data/raw/
+SARIntelligence/data/real_satellite_samples/
+SARIntelligence/preprocessed/
+
+# Keep AOI geojsons, catalog JSON & SQLite DB
 !data/README.md
 !data/custom_aoi.geojson
+!data/berlin_tesla_aoi.geojson
+!data/bhadla_solar_aoi.geojson
+!data/dholera_sir_aoi.geojson
+!data/jewar_airport_aoi.geojson
+!SARIntelligence/data/sarintelligence.db
+!data/sar_master_catalog.json
 
-# 2. Model Checkpoints & Large Weights (>100MB)
+# ------------------------------------------
+# 2. Model Checkpoints & Large Weights (>50MB)
+# ------------------------------------------
 models/retrieval/*.pt
 models/retrieval/*.bin
 models/retrieval/*.safetensors
@@ -34,6 +62,17 @@ models/**/*.pth
 models/**/*.bin
 models/**/*.safetensors
 models/**/*.onnx
+models/change_head/
+
+# SAR model weights
+SARIntelligence/weights/**/*.pt
+SARIntelligence/weights/**/*.pth
+SARIntelligence/weights/**/*.bin
+SARIntelligence/weights/**/*.safetensors
+SARIntelligence/weights/**/*.onnx
+SARIntelligence/weights/**/*.h5
+
+# Generic weight extensions
 *.pt
 *.pth
 *.bin
@@ -42,12 +81,10 @@ models/**/*.onnx
 *.weights
 *.h5
 *.pkl
-models/change_head/
 
-# 3. Reference & External Repositories
-SIH2026/
-
-# 4. Python Cache, Bytecode & Testing Artifacts
+# ------------------------------------------
+# 3. Python Cache & Bytecode
+# ------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -58,7 +95,9 @@ htmlcov/
 .tox/
 .nox/
 
-# 5. Virtual Environments
+# ------------------------------------------
+# 4. Virtual Environments & Secrets
+# ------------------------------------------
 .env
 .env.*
 !.env.example
@@ -67,16 +106,19 @@ venv/
 ENV/
 env/
 
-# 6. IDE, OS & System Generated Logs
+# ------------------------------------------
+# 5. IDE, OS & System Files
+# ------------------------------------------
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 *.log
-scratch/
 .system_generated/
 
-# 7. Archives & Compressed Dumps
+# ------------------------------------------
+# 6. Archives & Compressed Dumps
+# ------------------------------------------
 *.zip
 *.tar
 *.tar.gz
@@ -84,18 +126,39 @@ scratch/
 *.rar
 *.7z
 
-# 8. Temporary & Local Evaluation Scratch Scripts
-compare_*.py
-generate_*.py
-scratch_*.py
-show_cloudy_tiles.py
-verify_*.py
-datasets/defense_strategic_bases.geojson
-
-# 9. Presentations, Office Documents & Temporary Office Locks
+# ------------------------------------------
+# 7. Presentations, Office Docs & Lock Files
+# ------------------------------------------
 *.ppt
 *.pptx
 *.doc
 *.docx
 ~$*
-data/calibration/
+
+# ------------------------------------------
+# 8. Scratch & Temporary Scripts (all levels)
+# ------------------------------------------
+scratch/
+scratch_test/
+backend/scratch/
+SARIntelligence/data/generators/scratch/
+compare_*.py
+generate_*.py
+scratch_*.py
+show_cloudy_tiles.py
+verify_*.py
+clear_system_data.py
+create_showcase.py
+run_master_ingestion.py
+run_tactical_query.py
+
+# ------------------------------------------
+# 9. External References & Unused Dirs
+# ------------------------------------------
+SIH2026/
+datasets/defense_strategic_bases.geojson
+data/mstar_dataset/
+data/sar_annotated/
+data/sar_qdrant/
+data/sar_temporal_diffs/
+data/test_qdrant/
