@@ -137,6 +137,9 @@ Thumbs.db
 *.doc
 *.docx
 ~$*
+!CANOPUS_SAR_Presentation.pptx
+!Grand-Finale-PPT (1).pptx
+
 
 # ------------------------------------------
 # 8. Scratch & Temporary Scripts (all levels)
